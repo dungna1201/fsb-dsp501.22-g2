@@ -1,2 +1,3 @@
 fig_graph-*.png
 Data/
+__pycache__/
