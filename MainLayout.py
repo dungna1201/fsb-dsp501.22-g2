@@ -12,6 +12,7 @@ from kivy.uix.filechooser import FileChooserIconView
 from kivy.uix.popup import Popup
 from kivy.uix.button import Button
 from kivy.uix.image import Image
+from kivy.properties import StringProperty
 from WaveformPlot import WaveformPlot
 
 try:
@@ -32,6 +33,7 @@ class MainLayout(BoxLayout):
     recorded_frames = []
     sample_rate = 44100
     channels = 1
+    fig_graph = StringProperty('')
 
     def choose_file(self):
         file_chooser = FileChooserIconView(
@@ -166,6 +168,10 @@ class MainLayout(BoxLayout):
         analysis_text = []
         if file_extension == ".wav":
             try:
+                self.ids.status_label.text = "Đang phân tích file âm thanh."
+                self.fig_graph = ""
+                # self.ids.graph_image.reload()
+
                 sr, raw = wav.read(wav_path)
                 raw = raw.astype(np.float64)
                 if raw.ndim > 1:
@@ -207,8 +213,10 @@ class MainLayout(BoxLayout):
                 analysis_text.append(f"   T_P   = {res['T_P']:.1f}")
 
                 # Vẽ đồ thị
-                image_path = WaveformPlot.draw(res)
-                self.ids.image_graph = Image(source=image_path)
+                self.fig_graph = WaveformPlot.draw(res)
+                # self.fig_graph = self.fig_graph
+                # self.ids.image_graph = Image(source=self.fig_graph)
+                # self.ids.graph_image.reload()
             except Exception as error:
                 analysis_text.append(f"Lỗi phân tích WAV: {error}")
         else:

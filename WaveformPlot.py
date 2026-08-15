@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import time
 
 LABEL_COLORS = {2: ('green', 0.25), 1: ('orange', 0.25), 0: ('gray', 0.15)}
 
@@ -70,6 +71,7 @@ class WaveformPlot():
         axs[4].grid(True, alpha=0.4)
 
         plt.tight_layout()
-        plt.savefig("fig_graph.png", dpi=150, bbox_inches='tight')
+        filename = f"fig_graph-{time.time()}.png"
+        plt.savefig(filename, dpi=150, bbox_inches='tight')
         plt.close()
-        return 'fig_graph.png'
+        return filename

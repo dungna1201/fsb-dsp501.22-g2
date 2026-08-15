@@ -10,73 +10,106 @@
         size_hint_y: None
         height: 60
 
-    Label:
-        id: file_label
-        text: "Chưa chọn file"
-        font_size: 18
-        size_hint_y: None
-        height: 40
+    ScrollView:
+        do_scroll_x: False
+        do_scroll_y: True
 
-    Label:
-        id: status_label
-        text: "Sẵn sàng"
-        font_size: 18
-        size_hint_y: None
-        height: 40
+        BoxLayout:
+            orientation: "vertical"
+            padding: 24
+            spacing: 16
+            size_hint_y: None
+            height: self.minimum_height
 
-    BoxLayout:
-        orientation: "horizontal"
-        spacing: 12
-        size_hint_y: None
-        height: 60
+            BoxLayout:
+                orientation: "vertical"
+                spacing: 12
+                size_hint_y: None
+                height: 60
 
-        Button:
-            id: record_button
-            text: "Thu âm"
-            font_size: 20
-            on_press: root.toggle_recording()
+                Label:
+                    id: file_label
+                    text: "Chưa chọn file"
+                    font_size: 18
+                    size_hint_y: None
+                    height: 40
 
-        Button:
-            text: "Chọn file"
-            font_size: 20
-            on_press: root.choose_file()
+                Label:
+                    id: status_label
+                    text: "Sẵn sàng"
+                    font_size: 18
+                    size_hint_y: None
+                    height: 40
 
-    BoxLayout:
-        orientation: "horizontal"
-        spacing: 12
-        size_hint_y: None
-        height: 60
+            BoxLayout:
+                orientation: "horizontal"
+                spacing: 12
+                size_hint_y: None
+                height: 60
 
-        Button:
-            text: "Nghe"
-            font_size: 20
-            on_press: root.play_audio()
+                Button:
+                    id: record_button
+                    text: "Thu âm"
+                    font_size: 20
+                    on_press: root.toggle_recording()
 
-        Button:
-            text: "Dừng nghe"
-            font_size: 20
-            on_press: root.stop_audio()
+                Button:
+                    text: "Chọn file"
+                    font_size: 20
+                    on_press: root.choose_file()
 
-        Button:
-            text: "Phân tích"
-            font_size: 20
-            on_press: root.analyze_audio()
+            BoxLayout:
+                orientation: "horizontal"
+                spacing: 12
+                size_hint_y: None
+                height: 60
 
-    Image:
-        id: image_graph
-        size_hint_y: None
+                Button:
+                    text: "Nghe"
+                    font_size: 20
+                    on_press: root.play_audio()
 
-    Label:
-        text: "Kết quả phân tích"
-        font_size: 22
-        bold: True
-        size_hint_y: None
-        height: 40
+                Button:
+                    text: "Dừng nghe"
+                    font_size: 20
+                    on_press: root.stop_audio()
 
-    Label:
-        id: analysis_label
-        text: "Chưa có dữ liệu phân tích."
-        font_size: 17
-        halign: "left"
-        valign: "top"
-        text_size: self.width, None
+                Button:
+                    text: "Phân tích"
+                    font_size: 20
+                    on_press: root.analyze_audio()
+
+            BoxLayout:
+                orientation: "vertical"
+                spacing: 12
+                size_hint_y: None
+                height: 60
+
+                Label:
+                    text: "Kết quả phân tích"
+                    font_size: 22
+                    bold: True
+                    size_hint_y: None
+                    height: 40
+
+            BoxLayout:
+                orientation: "horizontal"
+                spacing: 12
+                size_hint_y: None
+                height: 600
+
+                Label:
+                    id: analysis_label
+                    text: "Chưa có dữ liệu phân tích."
+                    font_size: 17
+                    halign: "left"
+                    valign: "top"
+                    text_size: self.width, None
+                Image:
+                    id: image_graph
+                    source: root.fig_graph
+                    nocache: True
+                    allow_stretch: True
+                    keep_ratio: True
+                    size_hint_y: None
+                    height: 600
