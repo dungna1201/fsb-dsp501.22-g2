@@ -1,0 +1,82 @@
+<MainLayout>:
+    orientation: "vertical"
+    padding: 24
+    spacing: 16
+
+    Label:
+        text: "Ứng dụng xử lý âm thanh"
+        font_size: 30
+        bold: True
+        size_hint_y: None
+        height: 60
+
+    Label:
+        id: file_label
+        text: "Chưa chọn file"
+        font_size: 18
+        size_hint_y: None
+        height: 40
+
+    Label:
+        id: status_label
+        text: "Sẵn sàng"
+        font_size: 18
+        size_hint_y: None
+        height: 40
+
+    BoxLayout:
+        orientation: "horizontal"
+        spacing: 12
+        size_hint_y: None
+        height: 60
+
+        Button:
+            id: record_button
+            text: "Thu âm"
+            font_size: 20
+            on_press: root.toggle_recording()
+
+        Button:
+            text: "Chọn file"
+            font_size: 20
+            on_press: root.choose_file()
+
+    BoxLayout:
+        orientation: "horizontal"
+        spacing: 12
+        size_hint_y: None
+        height: 60
+
+        Button:
+            text: "Nghe"
+            font_size: 20
+            on_press: root.play_audio()
+
+        Button:
+            text: "Dừng nghe"
+            font_size: 20
+            on_press: root.stop_audio()
+
+        Button:
+            text: "Phân tích"
+            font_size: 20
+            on_press: root.analyze_audio()
+
+    Image:
+        id: image_graph
+        size_hint_y: None
+
+    Label:
+        text: "Kết quả phân tích"
+        font_size: 22
+        bold: True
+        size_hint_y: None
+        height: 40
+
+    Label:
+        id: analysis_label
+        text: "Chưa có dữ liệu phân tích."
+        font_size: 17
+        halign: "left"
+        valign: "top"
+        text_size: self.width, None
