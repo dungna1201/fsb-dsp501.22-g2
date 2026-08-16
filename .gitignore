@@ -1,4 +1,6 @@
-fig_graph-*.png
+*.png
 Data/
 __pycache__/
 .buildozer/
+.idea/
+*.wav

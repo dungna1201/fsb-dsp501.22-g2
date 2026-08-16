@@ -1,11 +1,17 @@
 """
-Phát hiện Voice / Unvoice / Silence trong tín hiệu tiếng nói
+DSP Module: Phát hiện Voice / Unvoice / Silence trong tín hiệu tiếng nói
+
+1. Tiền xử lý (chuẩn hóa, lọc DC)
+2. Phân khung + Hamming window
+3. Trích xuất đặc trưng: STE, ZCR, ACF R_max, Spectral Flatness, Centroid, Peakiness
+4. Phân loại ngưỡng thích ứng => 0 (Silence) / 1 (Unvoice) / 2 (Voice)
+5. Hậu xử lý: Median filter làm mượt nhãn
 """
 
 import numpy as np
 from scipy.signal import butter, lfilter
 
-# Tham số cấu hình
+# THAM SỐ CẤU HÌNH THUẬT TOÁN (ALGORITHM CONFIGURATION PARAMETERS)
 
 # 1. Cấu hình Tiền xử lý & Phân khung (Pre-processing & Framing)
 HIGH_PASS_CUTOFF_HZ = 80.0     # Tần số cắt cho bộ lọc thông cao loại DC (Hz)
@@ -41,8 +47,7 @@ T_C_DEFAULT = 3500.0           # Ngưỡng Spectral Centroid tối đa cho Voice
 T_P_DEFAULT = 150.0            # Ngưỡng Spectral Peakiness tối đa cho Voice
 
 # Hậu xử lý (Post-processing)
-MEDIAN_FILTER_SIZE = 5         # Kích thước cửa sổ lọc trung vị (Median filter) làm mượt nhãn
-
+MEDIAN_FILTER_SIZE = 7         # Kích thước cửa sổ lọc trung vị (Median filter) làm mượt nhãn
 
 # 1. TIỀN XỬ LÝ (PREPROCESSING)
 def preprocess(
@@ -52,7 +57,19 @@ def preprocess(
     filter_order: int = HIGH_PASS_FILTER_ORDER
 ) -> np.ndarray:
     """
-    Tiền xử lý tín hiệu
+    Tiền xử lý tín hiệu:
+      - Chuyển về float64
+      - Chuẩn hóa biên độ về [-1, 1]
+      - Lọc thông cao (High-pass) để loại DC offset và nhiễu tần thấp
+
+    Tham số:
+        signal       : Mảng tín hiệu âm thanh 1 chiều
+        sample_rate  : Tần số lấy mẫu (Hz)
+        cutoff_hz    : Tần số cắt High-pass (Hz)
+        filter_order : Bậc bộ lọc Butterworth
+
+    Trả về:
+        Mảng tín hiệu đã tiền xử lý (float64)
     """
     sig = signal.astype(np.float64)
 
@@ -79,6 +96,17 @@ def create_frames(
 ):
     """
     Chia tín hiệu thành các khung ngắn có chồng lấp và nhân cửa sổ Hamming.
+
+    Tham số:
+        signal         : Tín hiệu 1 chiều (float)
+        sample_rate    : Tần số lấy mẫu
+        frame_size_ms  : Độ dài khung (ms), mặc định 25 ms
+        frame_stride_ms: Bước dịch khung (ms), mặc định 10 ms (overlap 60%)
+
+    Trả về:
+        frames       : Ma trận (num_frames × frame_length) đã nhân Hamming
+        frame_length : Số mẫu mỗi khung
+        frame_step   : Số mẫu mỗi bước dịch
     """
     frame_length = int(round(frame_size_ms * 1e-3 * sample_rate))
     frame_step   = int(round(frame_stride_ms * 1e-3 * sample_rate))
@@ -98,7 +126,7 @@ def create_frames(
 
     frames = pad_signal[indices]
 
-    # Nhân cửa sổ Hamming giảm rò rỉ phổ (Spectral Leakage)
+    # Nhân cửa sổ Hamming — giảm rò rỉ phổ (Spectral Leakage)
     frames *= np.hamming(frame_length)
 
     return frames, frame_length, frame_step
@@ -107,14 +135,23 @@ def create_frames(
 # 3. TRÍCH XUẤT ĐẶC TRƯNG (FEATURE EXTRACTION)
 def compute_ste(frames: np.ndarray) -> np.ndarray:
     """
-    Short-Time Energy (STE)
+    Short-Time Energy (STE) — Năng lượng ngắn hạn.
+      E[i] = Sigma(x[n]^2)
+
+    Voice   → E lớn (dây thanh quản rung mạnh)
+    Unvoice → E vừa phải
+    Silence → E ≈ 0
     """
     return np.sum(frames ** 2, axis=1)
 
 
 def compute_zcr(frames: np.ndarray) -> np.ndarray:
     """
-    Zero-Crossing Rate (ZCR)
+    Zero-Crossing Rate (ZCR) — Tốc độ qua điểm 0.
+      ZCR[i] = Σ|sign(x[n]) − sign(x[n−1])| / (2N)
+
+    Voice   → ZCR thấp (dao động chậm, có chu kỳ)
+    Unvoice → ZCR cao  (dao động nhanh như nhiễu)
     """
     signs = np.sign(frames)
     signs[signs == 0] = 1  # tránh 0 gây lỗi khi tính hiệu
@@ -131,7 +168,14 @@ def compute_acf_max(
     f0_max: float = F0_MAX_HZ
 ) -> np.ndarray:
     """
-    Đỉnh hàm tự tương quan chuẩn hóa (R_max)
+    Đỉnh hàm tự tương quan chuẩn hóa (R_max) — Mức độ có tính chu kỳ.
+
+    Tính autocorrelation bằng FFT (nhanh hơn tính trực tiếp O(N^2)):
+      R = IFFT(|FFT(x)|^2)
+    Sau đó tìm đỉnh max trong dải lag tương ứng với f0 ∈ [f0_min, f0_max].
+
+    Voice   → R_max cao (đỉnh rõ, chu kỳ pitch ổn định)
+    Unvoice → R_max thấp (không có tính chu kỳ)
     """
     num_frames, frame_length = frames.shape
     r_max = np.zeros(num_frames)
@@ -165,7 +209,11 @@ def compute_acf_max(
 
 def compute_spectral_flatness(frames: np.ndarray) -> np.ndarray:
     """
-    Spectral Flatness - Độ phẳng phổ.
+    Spectral Flatness (Wiener Entropy) — Độ phẳng phổ.
+      SF = geometric_mean(|X[k]|^2) / arithmetic_mean(|X[k]|^2)
+
+    Voice   → SF thấp  (phổ có đỉnh rõ tại harmonics)
+    Unvoice → SF cao   (phổ phẳng giống nhiễu trắng)
     """
     n_fft = frames.shape[1]
     power_spectrum = np.abs(np.fft.rfft(frames, n=n_fft)) ** 2 + 1e-12  # tránh log(0)
@@ -180,7 +228,9 @@ def compute_spectral_flatness(frames: np.ndarray) -> np.ndarray:
 
 def compute_spectral_centroid(frames: np.ndarray, sample_rate: int) -> np.ndarray:
     """
-    Spectral Centroid - trọng tâm tần số của phổ từng khung.
+    Spectral Centroid — trung tâm tần số của phổ từng khung.
+    Voice   → thường tập trung ở dải tần thấp hơn so với âm nhạc phức tạp.
+    Unvoice → phổ dịch về dải tần cao/đặc trưng riêng hơn.
     """
     n_fft = frames.shape[1]
     spectrum = np.abs(np.fft.rfft(frames, n=n_fft))
@@ -193,7 +243,9 @@ def compute_spectral_centroid(frames: np.ndarray, sample_rate: int) -> np.ndarra
 
 def compute_spectral_peakiness(frames: np.ndarray) -> np.ndarray:
     """
-    Spectral Peakiness - mức độ phổ bị tập trung vào một vài bin.
+    Spectral Peakiness — mức độ phổ bị tập trung vào một vài bin.
+    Pure-tone/music-like signals có peakiness rất cao.
+    Speech voiced thường có peakiness thấp hơn vì phổ có nhiều harmonic/formant.
     """
     n_fft = frames.shape[1]
     power_spectrum = np.abs(np.fft.rfft(frames, n=n_fft)) ** 2 + 1e-12
@@ -214,6 +266,21 @@ def classify_frames(
 ):
     """
     Phân loại từng khung thành Silence (0), Unvoice (1), Voice (2).
+
+    Thuật toán: Dual-Threshold thích ứng dựa trên STE + ZCR + ACF R_max.
+
+    Bước 1 — Ước lượng nhiễu nền từ `noise_frame_count` khung đầu tiên
+             (giả định các khung này là nhiễu nền / khoảng lặng trước khi nói).
+
+    Bước 2 — Xác định ngưỡng thích ứng từ các cấu hình mặc định.
+
+    Bước 3 — Phân loại sơ bộ:
+             Silence  ← STE < T_E
+             Voice    ← STE ≥ T_E VÀ có tính chu kỳ rõ (R_max ≥ T_R VÀ ZCR < T_ZCR)
+                         VÀ phổ có đặc trưng speech-like (SF thấp, centroid thấp, peakiness vừa phải)
+             Unvoice  ← còn lại
+
+    Bước 4 — Làm mượt nhãn bằng Median Filter (loại nhiễu phân loại đơn lẻ).
     """
     n = noise_frame_count
 
@@ -241,31 +308,16 @@ def classify_frames(
         if ste[i] < T_E:
             labels[i] = 0  # Silence
         else:
-            # Periodicity check (strong indicator of voiced speech)
             is_periodic = (r_max[i] >= T_R) and (zcr[i] < T_ZCR)
-
-            # Noise-like indicators
             is_noise_like = (zcr[i] >= T_ZCR * ZCR_NOISE_FACTOR) or (spectral_flatness[i] >= T_SF)
-
-            # Relaxed criteria to avoid strict rejection of true voiced segments
-            is_strong_energy = ste[i] >= max(T_E * 2.5, T_E + 3.0 * noise_ste_std)
-            is_low_sf = spectral_flatness[i] < T_SF
-
-            is_speech_like_strict = (
+            is_speech_like = (
                 is_periodic
                 and not is_noise_like
                 and (spectral_centroid[i] < T_C)
                 and (spectral_peakiness[i] < T_P)
             )
 
-            is_speech_like_relaxed = (
-                is_strong_energy
-                and is_low_sf
-                and (spectral_centroid[i] < T_C)
-                and (spectral_peakiness[i] < T_P)
-            )
-
-            if is_speech_like_strict or (is_speech_like_relaxed and not is_noise_like):
+            if is_speech_like:
                 labels[i] = 2  # Voice
             else:
                 labels[i] = 1  # Unvoice (bao gồm tiếng vỗ tay, nhiễu, âm nhạc và âm vô thanh)
@@ -311,13 +363,13 @@ def run_analysis(
     ste = compute_ste(frames)
     zcr = compute_zcr(frames)
     r_max = compute_acf_max(frames, sample_rate)
-    spectral_flatness = compute_spectral_flatness(frames)
+    sf  = compute_spectral_flatness(frames)
     spectral_centroid = compute_spectral_centroid(frames, sample_rate)
     spectral_peakiness = compute_spectral_peakiness(frames)
 
     # 4. Phân loại
     labels, T_E, T_ZCR, T_R, T_SF, T_C, T_P = classify_frames(
-        ste, zcr, r_max, spectral_flatness, spectral_centroid, spectral_peakiness,
+        ste, zcr, r_max, sf, spectral_centroid, spectral_peakiness,
         noise_frame_count=noise_frame_count
     )
 
@@ -336,9 +388,7 @@ def run_analysis(
         "ste": ste,
         "zcr": zcr,
         "r_max": r_max,
-        "spectral_flatness": spectral_flatness,
-        "spectral_centroid": spectral_centroid,
-        "spectral_peakiness": spectral_peakiness,
+        "spectral_flatness": sf,
         "labels": labels,
         "T_E": T_E,
         "T_ZCR": T_ZCR,

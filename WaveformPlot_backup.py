@@ -1,28 +1,23 @@
 import matplotlib.pyplot as plt
-import scipy.io.wavfile as wav
-import os
 import time
 
 LABEL_COLORS = {2: ('green', 0.25), 1: ('orange', 0.25), 0: ('gray', 0.15)}
 
 class WaveformPlot():
     def draw(res):
-
-        sig    = res["signal_preprocessed"]
-        t_sig  = res["time_axis"]
-        t_fr   = res["frame_times"]
-        ste    = res["ste"]
-        zcr    = res["zcr"]
-        r_max  = res["r_max"]
-        spectral_flatness = res["spectral_flatness"]
-        spectral_centroid = res["spectral_centroid"]
-        spectral_peakiness = res["spectral_peakiness"]
+        sig = res["signal_preprocessed"]
+        t_sig = res["time_axis"]
+        t_fr = res["frame_times"]
+        ste = res["ste"]
+        zcr = res["zcr"]
+        r_max = res["r_max"]
+        sf = res["spectral_flatness"]
         labels = res["labels"]
-        T_E    = res["T_E"]
-        T_ZCR  = res["T_ZCR"]
-        T_R    = res["T_R"]
+        T_E = res["T_E"]
+        T_ZCR = res["T_ZCR"]
+        T_R = res["T_R"]
 
-        # Đồ thị miền thời gian (waveform, STE, ZCR, ACF, classification)
+        # Đồ thị
         fig, axs = plt.subplots(5, 1, figsize=(13, 11), sharex=True)
         fig.suptitle("Phân tích Voice / Unvoice / Silence", fontsize=14, fontweight='bold')
 
@@ -35,7 +30,7 @@ class WaveformPlot():
         # 2) STE
         axs[1].plot(t_fr, ste, color='#DC2626', linewidth=1.2, label='STE')
         axs[1].axhline(T_E, color='black', linestyle='--', linewidth=1.0,
-                        label=f'T_E = {T_E:.5f}')
+                       label=f'T_E = {T_E:.5f}')
         axs[1].set_title("2. Short-Time Energy (STE) + Ngưỡng")
         axs[1].set_ylabel("Năng lượng")
         axs[1].legend(loc='upper right', fontsize=8)
@@ -44,7 +39,7 @@ class WaveformPlot():
         # 3) ZCR
         axs[2].plot(t_fr, zcr, color='#16A34A', linewidth=1.2, label='ZCR')
         axs[2].axhline(T_ZCR, color='black', linestyle='--', linewidth=1.0,
-                        label=f'T_ZCR = {T_ZCR:.3f}')
+                       label=f'T_ZCR = {T_ZCR:.3f}')
         axs[2].set_title("3. Zero-Crossing Rate (ZCR) + Ngưỡng")
         axs[2].set_ylabel("Tỷ lệ ZCR")
         axs[2].legend(loc='upper right', fontsize=8)
@@ -53,8 +48,8 @@ class WaveformPlot():
         # 4) ACF R_max
         axs[3].plot(t_fr, r_max, color='#7C3AED', linewidth=1.2, label='ACF R_max')
         axs[3].axhline(T_R, color='black', linestyle='--', linewidth=1.0,
-                        label=f'T_R = {T_R:.2f}')
-        axs[3].set_title("4. Autocorrelation + Ngưỡng")
+                       label=f'T_R = {T_R:.2f}')
+        axs[3].set_title("4. Đỉnh Tự Tương Quan Chuẩn Hóa (ACF R_max) + Ngưỡng")
         axs[3].set_ylabel("R_max")
         axs[3].set_ylim(-0.1, 1.05)
         axs[3].legend(loc='upper right', fontsize=8)
@@ -62,11 +57,11 @@ class WaveformPlot():
 
         # 5) Kết quả phân loại
         label_map = {0: 'Silence', 1: 'Unvoice', 2: 'Voice'}
-        color_map  = {0: 'gray',   1: 'orange',  2: 'green'}
+        color_map = {0: 'gray', 1: 'orange', 2: 'green'}
         for lbl, name in label_map.items():
             axs[4].fill_between(t_fr, 0, labels,
                                 where=(labels == lbl),
-                        color=color_map[lbl], alpha=0.5, label=name)
+                                color=color_map[lbl], alpha=0.5, label=name)
         axs[4].step(t_fr, labels, where='mid', color='black', linewidth=1.0)
         axs[4].set_title("5. Kết quả phân loại (0=Silence | 1=Unvoice | 2=Voice)")
         axs[4].set_yticks([0, 1, 2])
@@ -80,37 +75,3 @@ class WaveformPlot():
         plt.savefig(filename, dpi=150, bbox_inches='tight')
         plt.close()
         return filename
-
-# # Đồ thị miền tần số
-# fig2, ax2 = plt.subplots(3, 1, figsize=(13, 9), sharex=True)
-# fig2.suptitle("Phân tích phổ", fontsize=14, fontweight='bold')
-
-# # Spectral Flatness
-# ax2[0].plot(t_fr, spectral_flatness, color='#0EA5A4', linewidth=1.2, label='Spectral Flatness')
-# ax2[0].axhline(res['T_SF'], color='black', linestyle='--', linewidth=1.0,
-#                 label=f"T_SF = {res['T_SF']:.3f}")
-# ax2[0].set_ylabel('Spectral Flatness')
-# ax2[0].legend(loc='upper right', fontsize=8)
-# ax2[0].grid(True, alpha=0.4)
-
-# # Spectral Centroid
-# ax2[1].plot(t_fr, spectral_centroid, color='#F97316', linewidth=1.2, label='Spectral Centroid')
-# ax2[1].axhline(res['T_C'], color='black', linestyle='--', linewidth=1.0,
-#                 label=f"T_C = {res['T_C']:.1f} Hz")
-# ax2[1].set_ylabel('Spectral Centroid (Hz)')
-# ax2[1].legend(loc='upper right', fontsize=8)
-# ax2[1].grid(True, alpha=0.4)
-
-# # Spectral Peakiness
-# ax2[2].plot(t_fr, spectral_peakiness, color='#6366F1', linewidth=1.2, label='Spectral Peakiness')
-# ax2[2].axhline(res['T_P'], color='black', linestyle='--', linewidth=1.0,
-#                 label=f"T_P = {res['T_P']:.1f}")
-# ax2[2].set_ylabel('Spectral Peakiness')
-# ax2[2].set_xlabel('Thời gian (giây)')
-# ax2[2].legend(loc='upper right', fontsize=8)
-# ax2[2].grid(True, alpha=0.4)
-
-# plt.tight_layout()
-# plt.savefig('spectral_analysis_result.png', dpi=150, bbox_inches='tight')
-# print("Đồ thị spectral features đã lưu thành 'spectral_analysis_result.png'")
-# plt.show()
